@@ -4530,6 +4530,21 @@ class PyExecutor:
     def reset_prefix_cache(self):
         self.kv_cache_manager.reset_reuse_state()
 
+        if self.draft_model_engine is not None:
+            draft_kv = self.resource_manager.resource_managers.get(
+                ResourceManagerType.DRAFT_KV_CACHE_MANAGER)
+            if draft_kv is not None:
+                draft_kv.reset_reuse_state()
+
+        if self.drafter is not None:
+            self.drafter.cleanup_previous_draft_resources()
+            self.drafter.previous_draft_batch = None
+            self.drafter.previous_draft_outputs = None
+            self.drafter.previous_scheduled_batch = None
+            self.drafter.req_id_to_old_request = None
+
+        self.has_previous_draft_tokens = False
+
     def _handle_guided_decoder_errors(
             self, scheduled_batch: ScheduledRequests,
             failed_requests: Optional[List[Tuple[int, str]]]):

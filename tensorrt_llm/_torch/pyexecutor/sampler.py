@@ -3615,6 +3615,7 @@ class TorchSampler(Sampler[SampleStateTorch], AsyncWorkerMixin):
                     )
                 req.py_num_accepted_draft_tokens = 0
                 req.py_rewind_len = 0
+                req.py_result.spec_token_origins.append(0)
             else:
                 processed = 1
                 num_accepted = self.process_draft_tokens(
@@ -3632,6 +3633,10 @@ class TorchSampler(Sampler[SampleStateTorch], AsyncWorkerMixin):
                     req.py_rewind_len = 0
                 processed += num_accepted
                 self.handle_logprobs(req, logprobs_state_list=logprobs_state_list, count=processed)
+                spec_iter = req.py_decoding_iter + 1
+                for _ in range(num_accepted):
+                    req.py_result.spec_token_origins.append(spec_iter)
+                req.py_result.spec_token_origins.append(0)
             req.py_decoding_iter += 1
             # Check None or empty list
             if req.py_stop_words_list:
