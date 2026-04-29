@@ -131,6 +131,7 @@ class CompletionOutput:
     generation_logits: Optional[torch.Tensor] = None
     additional_context_outputs: Optional[Dict[str, torch.Tensor]] = None
     additional_generation_outputs: Optional[Dict[str, torch.Tensor]] = None
+    spec_token_origins: Optional[List[int]] = None
     disaggregated_params: Optional[DisaggregatedParams] = None
     request_perf_metrics: Optional[tllm.RequestPerfMetrics] = None
 
@@ -316,8 +317,7 @@ class GenerationResultBase:
 
             # overcome some WAR in the cpp executor
             if finish_reasons[src_idx] != tllm.FinishReason.CANCELLED:
-                if self.use_trtllm_sampler and len(
-                        output.logprobs) > output.length:
+                if len(output.logprobs) > output.length:
                     # LlmResult holds a reference to LogProbStorage, which may be updated by the worker before the result is serialized.
                     # Therefore, we treat extra logprobs/logits as expected and only consume what's needed.
                     output.logprobs = output.logprobs[:output.length]
@@ -354,6 +354,10 @@ class GenerationResultBase:
         if getattr(response_tensors, 'additional_generation_outputs',
                    None) is not None:
             output.additional_generation_outputs = response_tensors.additional_generation_outputs
+
+        spec_origins = getattr(response_tensors, 'spec_token_origins', None)
+        if spec_origins:
+            output.spec_token_origins = list(spec_origins)
 
         # when sampling_params.n > 1 and is cancelled, make sure all the outputs
         # be marked as cancelled.

@@ -325,6 +325,7 @@ class PyResult:
             for name in additional_outputs
         } if additional_outputs else None
         self.diff = PyResult.Diff()
+        self.spec_token_origins: list[int] = []
 
     def reset_diff(self):
         self.diff = PyResult.Diff()
@@ -543,7 +544,7 @@ class LlmResult:
         ('context_logits', 'generation_logits', 'log_probs', 'cum_log_probs',
          'mm_embedding_handles', 'additional_context_outputs',
          'additional_generation_outputs', 'mrope_position_ids_handle',
-         'mrope_position_deltas_handle'))
+         'mrope_position_deltas_handle', 'spec_token_origins'))
 
     def __init__(self,
                  result: Union[bytes, tensorrt_llm.bindings.executor.Result],
