@@ -180,7 +180,11 @@ class RMSNorm(nn.Module):
                     return (hidden_states_fused, residual_out
                             ) if return_residual else hidden_states_fused
 
-        if IS_FLASHINFER_AVAILABLE:
+        # Driver 535 compatibility workaround:
+        # FlashInfer RMSNorm can raise cudaErrorInvalidConfiguration with
+        # draft-target speculative decoding batch shapes on cw-pdx's 535 KMD.
+        # Keep this disabled until the cluster driver is upgraded to 580+.
+        if False:
             from ..custom_ops import (flashinfer_fused_add_rmsnorm,
                                       flashinfer_gemma_fused_add_rmsnorm,
                                       flashinfer_gemma_rmsnorm,

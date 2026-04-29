@@ -272,6 +272,7 @@ class PyResult:
             name: []
             for name in additional_outputs
         } if additional_outputs else None
+        self.spec_token_origins: list[int] = []
 
     def set_exclude_last_generation_logits(
             self, exclude_last_generation_logits: bool):
@@ -407,7 +408,7 @@ class LlmResult:
         ('context_logits', 'generation_logits', 'log_probs', 'cum_log_probs',
          'mm_embedding_handle', 'additional_context_outputs',
          'additional_generation_outputs', 'mrope_position_ids_handle',
-         'mrope_position_deltas_handle'))
+         'mrope_position_deltas_handle', 'spec_token_origins'))
 
     def __init__(self,
                  result: Union[bytes, tensorrt_llm.bindings.executor.Result],

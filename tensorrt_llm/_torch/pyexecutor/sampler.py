@@ -1791,6 +1791,7 @@ class TorchSampler(Sampler, AsyncWorkerMixin):
                     add_token(req, new_tokens_list, beam_idx=beam_idx)
                 self.handle_logprobs(req, count=1)
             self._handle_finish_reasons(req, state.host.finish_reasons, finish_reasons)
+            req.py_result.spec_token_origins.append(0)
             req.py_decoding_iter += 1
 
         for req_idx, req in enumerate(
@@ -1813,6 +1814,7 @@ class TorchSampler(Sampler, AsyncWorkerMixin):
                 self._handle_finish_reasons(req, state.host.finish_reasons, finish_reasons)
                 req.py_num_accepted_draft_tokens = 0
                 req.py_rewind_len = 0
+                req.py_result.spec_token_origins.append(0)
 
             else:
                 processed = 1
@@ -1832,6 +1834,10 @@ class TorchSampler(Sampler, AsyncWorkerMixin):
                     req.py_rewind_len = 0
                 processed += num_accepted
                 self.handle_logprobs(req, count=processed)
+                spec_iter = req.py_decoding_iter + 1
+                for _ in range(num_accepted):
+                    req.py_result.spec_token_origins.append(spec_iter)
+                req.py_result.spec_token_origins.append(0)
             req.py_decoding_iter += 1
 
     def _return_log_probs(self, requests: list[LlmRequest]) -> bool:
