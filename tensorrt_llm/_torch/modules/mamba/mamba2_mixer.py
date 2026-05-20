@@ -404,6 +404,8 @@ class Mamba2Mixer(nn.Module):
             )
 
             # copy new ssm state
+            if current_ssm_states.dtype != ssm_states.dtype:
+                current_ssm_states = current_ssm_states.to(ssm_states.dtype)
             ssm_states[state_indices_p] = current_ssm_states
 
         if num_decodes > 0:
