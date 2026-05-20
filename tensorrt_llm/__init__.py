@@ -132,9 +132,26 @@ from .parameter import Parameter
 from .python_plugin import PluginBase
 from .sampling_params import SamplingParams
 from .version import __version__
-from .visual_gen import (ExtraParamSchema, VisualGen, VisualGenArgs,
-                         VisualGenError, VisualGenParams, VisualGenParamsError,
-                         VisualGenResult)
+
+_VISUAL_GEN_EXPORTS = {
+    'ExtraParamSchema',
+    'VisualGen',
+    'VisualGenArgs',
+    'VisualGenError',
+    'VisualGenParams',
+    'VisualGenParamsError',
+    'VisualGenResult',
+}
+
+
+def __getattr__(name):
+    if name in _VISUAL_GEN_EXPORTS:
+        from . import visual_gen
+
+        value = getattr(visual_gen, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     'AutoConfig',
