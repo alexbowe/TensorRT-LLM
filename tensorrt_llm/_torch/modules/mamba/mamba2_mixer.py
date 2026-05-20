@@ -415,8 +415,17 @@ class Mamba2Mixer(nn.Module):
                 # Speculative decoding only supported with Python path
                 assert layer_cache is not None, \
                     "Speculative decoding requires Python MambaCacheManager"
-                # TODO: support dynamic speculation, will add current_draft_len later [TRTLLM-10319]
-                draft_token_num = spec_metadata.max_draft_len + 1
+                if num_decode_tokens % num_decodes != 0:
+                    raise RuntimeError(
+                        "Speculative Mamba decode expected an equal number of "
+                        f"tokens per decode sequence, got {num_decode_tokens} "
+                        f"tokens for {num_decodes} sequences.")
+                draft_token_num = num_decode_tokens // num_decodes
+                if draft_token_num > spec_metadata.max_draft_len + 1:
+                    raise RuntimeError(
+                        "Speculative Mamba decode saw more tokens than the "
+                        f"configured draft window: {draft_token_num} > "
+                        f"{spec_metadata.max_draft_len + 1}.")
                 intermediate_conv_states = layer_cache.intermediate_conv_window
                 use_replay = getattr(attn_metadata.kv_cache_manager,
                                      'use_replay_state_update', False)
