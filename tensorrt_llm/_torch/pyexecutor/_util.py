@@ -1073,6 +1073,16 @@ def _create_kv_cache_manager(
                         "using legacy MTP path")
             use_replay = False
 
+        # DraftTarget can execute a runtime draft window shorter than the
+        # configured max_draft_len during warmup/verification. The replay
+        # cache tensors are allocated for the static max window, so use the
+        # legacy speculative Mamba cache path until replay supports dynamic T.
+        if (spec_config is not None
+                and spec_config.spec_dec_mode.is_draft_target()):
+            logger.info("Replay kernel incompatible with DraftTarget dynamic "
+                        "draft window; using legacy MTP path")
+            use_replay = False
+
         # Replay Philox uses PTX cvt.rs.f16x2.f32 which needs sm >= 100.
         # Flashinfer has a SW fallback at any SM.
         if (stochastic_rounding and ssm_cache_dtype == torch.float16
