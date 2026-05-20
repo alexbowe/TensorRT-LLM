@@ -1078,7 +1078,8 @@ def _create_kv_cache_manager(
         # cache tensors are allocated for the static max window, so use the
         # legacy speculative Mamba cache path until replay supports dynamic T.
         if (spec_config is not None
-                and spec_config.spec_dec_mode.is_draft_target()):
+                and (spec_config.spec_dec_mode.is_draft_target()
+                     or spec_config.spec_dec_mode.is_draft_target_one_model())):
             logger.info("Replay kernel incompatible with DraftTarget dynamic "
                         "draft window; using legacy MTP path")
             use_replay = False
