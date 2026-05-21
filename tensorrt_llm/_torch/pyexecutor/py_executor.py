@@ -1609,6 +1609,10 @@ class PyExecutor:
                                 self.guided_decoder.init_disagg_gen_requests()
 
                             batch_outputs = self._forward_step(scheduled_batch)
+                            self.perf_manager.save_specdec_metrics_to_requests(
+                                scheduled_batch.all_requests(),
+                                batch_outputs.get("specdec_metrics"),
+                            )
 
                             guided_decoder_failed_requests = None
                             if self.guided_decoder is not None:
@@ -2277,6 +2281,10 @@ class PyExecutor:
                         if self.dwdp_manager is not None:
                             self.dwdp_manager.prefetch_first_layers()
                         batch_outputs = self._forward_step(scheduled_batch)
+                        self.perf_manager.save_specdec_metrics_to_requests(
+                            scheduled_batch.all_requests(),
+                            batch_outputs.get("specdec_metrics"),
+                        )
 
                     guided_decoder_failed_requests = None
                     if self.guided_decoder is not None:
@@ -2556,6 +2564,10 @@ class PyExecutor:
                         batch_outputs = self._forward_step(
                             scheduled_batch, previous_tensors_device,
                             num_accepted_tokens_device)
+                        self.perf_manager.save_specdec_metrics_to_requests(
+                            scheduled_batch.all_requests(),
+                            batch_outputs.get("specdec_metrics"),
+                        )
 
                 if self.previous_batch is not None and should_process_previous_batch:
                     self._update_requests(self.previous_batch.sample_state)

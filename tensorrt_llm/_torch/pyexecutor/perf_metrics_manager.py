@@ -17,6 +17,14 @@ from tensorrt_llm.serve.responses_utils import get_steady_clock_now_in_seconds
 from .llm_request import PerfTimingInfo
 
 
+SPECDEC_METRIC_NAMES = (
+    "proposed_draft_tokens",
+    "accepted_draft_tokens",
+    "target_forward_time_ms",
+    "draft_forward_time_ms",
+)
+
+
 class PerfMetricsManager:
     """Manages GPU/CPU timing instrumentation for PyExecutor iterations.
 
@@ -128,6 +136,37 @@ class PerfMetricsManager:
             req.py_perf_timing.forward_end_time = forward_end_time
             req.py_perf_timing.sample_start_time = sample_start_time
             req.py_perf_timing.sample_end_time = sample_end_time
+
+    def save_specdec_metrics_to_requests(self, requests, specdec_metrics):
+        if not self.enabled or specdec_metrics is None:
+            return
+        if not isinstance(specdec_metrics, torch.Tensor):
+            return
+
+        metrics_cpu = specdec_metrics.detach().to("cpu", non_blocking=False)
+        if metrics_cpu.ndim != 2 or metrics_cpu.shape[1] < len(SPECDEC_METRIC_NAMES):
+            return
+
+        for req, row in zip(requests, metrics_cpu):
+            if not req.return_perf_metrics:
+                continue
+            metric = {
+                name: float(row[idx].item())
+                for idx, name in enumerate(SPECDEC_METRIC_NAMES)
+            }
+            proposed = metric["proposed_draft_tokens"]
+            accepted = metric["accepted_draft_tokens"]
+            draft_ms = metric["draft_forward_time_ms"]
+            if all(value == 0.0 for value in metric.values()):
+                continue
+
+            if req.py_perf_timing is None:
+                req.py_perf_timing = PerfTimingInfo()
+            metric["tar"] = accepted / proposed if proposed > 0 else 0.0
+            metric["draft_tokens_per_second"] = (
+                proposed / (draft_ms / 1000.0) if draft_ms > 0 else 0.0
+            )
+            req.py_perf_timing.specdec_step_metrics.append(metric)
 
     def compute_batch_gpu_times(self, requests):
         """Compute GPU times once per batch for the last ctx chunk or gen step.

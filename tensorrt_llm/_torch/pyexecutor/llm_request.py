@@ -52,6 +52,7 @@ class PerfTimingInfo:
     # Per-chunk metrics list (context/prefill phase, similar to step_metrics)
     # Non-chunked prefill = single-element list. Each entry stores CPU times and GPU events.
     ctx_chunk_metrics: List[Dict] = field(default_factory=list)
+    specdec_step_metrics: List[Dict] = field(default_factory=list)
     # Temporary step timing (current iteration)
     forward_start_time: Optional[float] = None
     forward_end_time: Optional[float] = None
@@ -833,6 +834,10 @@ class LlmRequest(tensorrt_llm.bindings.internal.batch_manager.LlmRequest):
             if self.py_perf_timing.ctx_chunk_metrics:
                 time_breakdown_metrics[
                     'ctx_chunk_metrics'] = self.py_perf_timing.ctx_chunk_metrics.copy(
+                    )
+            if self.py_perf_timing.specdec_step_metrics:
+                time_breakdown_metrics[
+                    'specdec_step_metrics'] = self.py_perf_timing.specdec_step_metrics.copy(
                     )
             if self.py_perf_timing.ctx_gpu_forward_time is not None:
                 time_breakdown_metrics[

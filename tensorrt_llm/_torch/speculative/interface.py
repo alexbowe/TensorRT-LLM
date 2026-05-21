@@ -391,6 +391,8 @@ class SpecMetadata:
     temperatures: Optional[torch.Tensor] = None
     top_ks: Optional[torch.Tensor] = None
     top_ps: Optional[torch.Tensor] = None
+    return_perf_metrics: bool = False
+    target_forward_time_ms: Optional[float] = None
 
     def __post_init__(self):
         pass

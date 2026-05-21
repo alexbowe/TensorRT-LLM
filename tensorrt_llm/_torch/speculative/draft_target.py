@@ -203,6 +203,15 @@ class DraftTargetOneModelWorker(SpecWorkerBase):
         # Get the draft KV cache manager if using separate layouts
         draft_kv_cache_manager = self.get_draft_kv_cache_manager(resource_manager)
 
+        collect_specdec_metrics = bool(
+            getattr(spec_metadata, "return_perf_metrics", False)
+        ) and num_gens > 0 and not torch.cuda.is_current_stream_capturing()
+        draft_start_event = draft_end_event = None
+        if collect_specdec_metrics:
+            draft_start_event = torch.cuda.Event(enable_timing=True)
+            draft_end_event = torch.cuda.Event(enable_timing=True)
+            draft_start_event.record()
+
         with self.draft_kv_cache_context(attn_metadata, draft_kv_cache_manager):
             for i in range(self.max_draft_len):
                 if i == 0:
@@ -272,6 +281,12 @@ class DraftTargetOneModelWorker(SpecWorkerBase):
                     "spec_metadata": spec_metadata,
                 }
 
+        draft_forward_time_ms = None
+        if collect_specdec_metrics:
+            draft_end_event.record()
+            draft_end_event.synchronize()
+            draft_forward_time_ms = draft_start_event.elapsed_time(draft_end_event)
+
         next_draft_tokens = torch.stack(next_draft_tokens, dim=1)
 
         # Restore attention metadata to original state
@@ -289,13 +304,28 @@ class DraftTargetOneModelWorker(SpecWorkerBase):
 
         attn_metadata.use_spec_decoding = True
 
-        return {
+        result = {
             "logits": raw_logits,
             "new_tokens": accepted_tokens,
             "new_tokens_lens": num_accepted_tokens,
             "next_draft_tokens": next_draft_tokens,
             "next_new_tokens": next_new_tokens,
         }
+        if collect_specdec_metrics:
+            specdec_metrics = torch.zeros(
+                (batch_size, 4), dtype=torch.float32, device=logits.device
+            )
+            specdec_metrics[num_contexts:, 0] = float(self.max_draft_len)
+            specdec_metrics[num_contexts:, 1] = (
+                num_accepted_tokens[num_contexts:].to(torch.float32) - 1
+            ).clamp_min(0)
+            target_forward_time_ms = (
+                getattr(spec_metadata, "target_forward_time_ms", None) or 0.0
+            )
+            specdec_metrics[num_contexts:, 2] = target_forward_time_ms / num_gens
+            specdec_metrics[num_contexts:, 3] = (draft_forward_time_ms or 0.0) / num_gens
+            result["specdec_metrics"] = specdec_metrics
+        return result
 
     def sample_and_accept_draft_tokens(
         self,

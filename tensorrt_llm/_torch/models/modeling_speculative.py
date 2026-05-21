@@ -1534,6 +1534,15 @@ class SpecDecOneEngineForCausalLM(DecoderModelForCausalLM[TModel, TConfig],
         resource_manager=None,
         **kwargs,
     ) -> torch.Tensor:
+        collect_specdec_metrics = bool(
+            getattr(spec_metadata, "return_perf_metrics", False)
+        ) and not torch.cuda.is_current_stream_capturing()
+        target_start_event = target_end_event = None
+        if collect_specdec_metrics:
+            target_start_event = torch.cuda.Event(enable_timing=True)
+            target_end_event = torch.cuda.Event(enable_timing=True)
+            target_start_event.record()
+
         hidden_states = self.model(
             input_ids=input_ids,
             attn_metadata=attn_metadata,
@@ -1557,6 +1566,12 @@ class SpecDecOneEngineForCausalLM(DecoderModelForCausalLM[TModel, TConfig],
                 attn_metadata,
                 True,
             )
+            if collect_specdec_metrics:
+                target_end_event.record()
+                target_end_event.synchronize()
+                spec_metadata.target_forward_time_ms = target_start_event.elapsed_time(
+                    target_end_event
+                )
 
             spec_input_ids = input_ids
             spec_position_ids = position_ids
